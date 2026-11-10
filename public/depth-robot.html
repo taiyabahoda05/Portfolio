@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Depth Robot</title>
+  <style>
+    :root {
+      --bg: #05080f;
+      --fg: #e8f6ff;
+      --muted: #7f98ad;
+      --accent: #2de2ff;
+      --line: #17283a;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px)
+    }
+
+    @media (prefers-color-scheme:light) {
+      :root:not([data-theme="dark"]) {
+        --bg: #0b111b;
+        --fg: #e8f6ff;
+        --muted: #8aa3b8;
+        --line: #1b2e42
+      }
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0
+    }
+
+    body {
+      background: radial-gradient(ellipse at 50% 40%, #0c1626, var(--bg) 70%);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      overflow: hidden;
+    }
+
+    body.embed {
+      gap: 0
+    }
+
+    body.embed h1,
+    body.embed .bar,
+    body.embed>p {
+      display: none
+    }
+
+    body.embed #wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%
+    }
+
+    body.embed #wrap {
+      height: 100%
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(16px, 2.4vw, 22px);
+      font-weight: 600;
+      letter-spacing: .18em;
+      text-transform: uppercase
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    #wrap {
+      perspective: 900px
+    }
+
+    #stage {
+      width: min(88vw, 72vh);
+      aspect-ratio: 1;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 30px 80px #000a, 0 0 60px #2de2ff22;
+      transition: box-shadow .3s;
+      will-change: transform;
+      touch-action: none
+    }
+
+    body.embed #stage {
+      width: min(100%, 100vh)
+    }
+
+    #stage canvas {
+      display: block;
+      width: 100%;
+      height: 100%
+    }
+
+    .bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center
+    }
+
+    label,
+    button {
+      background: #0d1a2a;
+      color: var(--fg);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer
+    }
+
+    label:hover,
+    button:hover {
+      border-color: var(--accent)
+    }
+
+    input {
+      display: none
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Touch the robot</h1>
+  <div id="wrap">
+    <div id="stage"></div>
+  </div>
+  <div class="bar">
+    <label>Upload image<input id="fi" type="file" accept="image/*"></label>
+    <label>Upload depth map (optional)<input id="fd" type="file" accept="image/*"></label>
+    <button id="reset">Reset robot</button>
+  </div>
+  <p>Move your cursor or finger across the image. Without a depth map, one is estimated automatically.</p>
+
+  <script>if (new URLSearchParams(location.search).has("embed")) document.body.classList.add("embed");</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const S = 1024;
+    const colorC = document.createElement('canvas'), depthC = document.createElement('canvas');
+    colorC.width = colorC.height = depthC.width = depthC.height = S;
+    const cx = colorC.getContext('2d'), dx = depthC.getContext('2d');
+
+    // ---------- Procedural robot (colour + matching depth map) ----------
+    function rr(c, x, y, w, h, r) { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); }
+    function circ(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, 7); }
+    function part(path, col0, col1, d0, d1, x, y, r) {
+      path(cx);
+      const g = cx.createRadialGradient(x - r * .3, y - r * .35, r * .05, x, y, r * 1.05);
+      g.addColorStop(0, col0); g.addColorStop(1, col1); cx.fillStyle = g; cx.fill();
+      path(dx);
+      const h = dx.createRadialGradient(x, y, 0, x, y, r);
+      h.addColorStop(0, `rgb(${d0},${d0},${d0})`); h.addColorStop(1, `rgb(${d1},${d1},${d1})`); dx.fillStyle = h; dx.fill();
+    }
+    function gloss(path, x, y, r, a) { // soft glossy highlight + shade, clipped to the part
+      cx.save(); path(cx); cx.clip();
+      let g = cx.createRadialGradient(x - r * .35, y - r * .45, 0, x - r * .35, y - r * .45, r * .75); g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+      cx.fillStyle = g; cx.fillRect(x - r * 2, y - r * 2, r * 4, r * 4);
+      g = cx.createRadialGradient(x + r * .5, y + r * .6, 0, x + r * .5, y + r * .6, r * .9); g.addColorStop(0, 'rgba(50,75,100,.35)'); g.addColorStop(1, 'rgba(50,75,100,0)');
+      cx.fillStyle = g; cx.fillRect(x - r * 2, y - r * 2, r * 4, r * 4); cx.restore();
+    }
+    const T0 = '#8ffcf3', T1 = '#0a6c76';
+    function drawRobot() {
+      // studio backdrop, floor glow and shadow
+      let g = cx.createRadialGradient(512, 380, 40, 512, 560, 820); g.addColorStop(0, '#1d4a5c'); g.addColorStop(.55, '#0b1f2e'); g.addColorStop(1, '#03070d');
+      cx.fillStyle = g; cx.fillRect(0, 0, S, S);
+      g = dx.createLinearGradient(0, 0, 0, S); g.addColorStop(0, 'rgb(18,18,18)'); g.addColorStop(1, 'rgb(40,40,40)'); dx.fillStyle = g; dx.fillRect(0, 0, S, S);
+      cx.save(); cx.translate(512, 990); cx.scale(1, .2);
+      g = cx.createRadialGradient(0, 0, 10, 0, 0, 360); g.addColorStop(0, 'rgba(45,226,255,.4)'); g.addColorStop(1, 'rgba(45,226,255,0)');
+      cx.fillStyle = g; cx.fillRect(-400, -400, 800, 800); cx.restore();
+      cx.fillStyle = 'rgba(0,0,0,.5)'; cx.beginPath(); cx.ellipse(512, 994, 240, 24, 0, 0, 7); cx.fill();
+
+      // legs, knee bands, boots
+      [[372, 427], [542, 597]].forEach(([x, m]) => {
+        part(c => rr(c, x, 770, 110, 170, 40), '#ffffff', '#9fb0c0', 150, 105, m, 850, 100);
+        part(c => rr(c, x - 6, 835, 122, 34, 17), T0, T1, 180, 150, m, 852, 70);
+        part(c => rr(c, x - 24, 915, 158, 84, 40), '#ffffff', '#8c9db0', 175, 120, m, 960, 90);
+      });
+      // arms, elbow bands, hands
+      [[312, 350], [636, 674]].forEach(([x, m]) => {
+        part(c => rr(c, x, 545, 76, 250, 38), '#ffffff', '#9fb0c0', 150, 100, m, 670, 125);
+        part(c => rr(c, x - 4, 670, 84, 26, 13), T0, T1, 175, 140, m, 683, 50);
+        part(c => circ(c, m, 818, 38), '#eef3f7', '#7f90a2', 165, 115, m, 818, 38);
+      });
+      // neck + torso
+      part(c => rr(c, 462, 470, 100, 70, 20), '#2a3440', '#05080c', 110, 90, 512, 505, 60);
+      const tor = c => rr(c, 378, 500, 268, 320, 110);
+      part(tor, '#ffffff', '#9aabbd', 175, 110, 512, 650, 190); gloss(tor, 512, 650, 190, .6);
+      // belly vent panel
+      part(c => rr(c, 430, 690, 164, 74, 24), T0, T1, 190, 165, 512, 727, 90);
+      cx.strokeStyle = 'rgba(0,70,80,.45)'; cx.lineWidth = 3;
+      for (let y = 704; y < 760; y += 11) { cx.beginPath(); cx.moveTo(446, y); cx.lineTo(578, y); cx.stroke(); }
+      // chest display
+      part(c => rr(c, 476, 556, 72, 102, 24), '#f4fbfc', '#b9ccd6', 150, 140, 512, 607, 60);
+      cx.save(); cx.strokeStyle = '#2de2ff'; cx.lineWidth = 6; cx.shadowColor = '#2de2ff'; cx.shadowBlur = 14;
+      rr(cx, 490, 570, 44, 76, 14); cx.stroke(); cx.beginPath(); cx.moveTo(490, 608); cx.lineTo(534, 608); cx.stroke(); cx.restore();
+      // shoulder joints
+      [350, 674].forEach(m => part(c => circ(c, m, 562, 54), T0, T1, 205, 150, m, 562, 54));
+
+      // head
+      const head = c => circ(c, 512, 285, 235);
+      part(head, '#ffffff', '#a2b3c3', 255, 150, 512, 285, 235); gloss(head, 512, 285, 235, .75);
+      cx.strokeStyle = 'rgba(60,85,105,.35)'; cx.lineWidth = 3;
+      cx.beginPath(); cx.moveTo(512, 52); cx.lineTo(512, 172); cx.moveTo(350, 100); cx.quadraticCurveTo(512, 138, 674, 100); cx.stroke();
+      // ear caps
+      [262, 706].forEach(x => part(c => rr(c, x, 232, 56, 136, 28), T0, T1, 225, 175, x + 28, 300, 70));
+      // visor
+      const vis = c => rr(c, 318, 170, 388, 240, 115);
+      part(vis, '#22313f', '#02050a', 215, 185, 512, 290, 200);
+      cx.strokeStyle = 'rgba(215,230,240,.55)'; cx.lineWidth = 5; vis(cx); cx.stroke();
+      cx.save(); vis(cx); cx.clip();
+      g = cx.createLinearGradient(330, 170, 600, 400); g.addColorStop(0, 'rgba(255,255,255,.22)'); g.addColorStop(.38, 'rgba(255,255,255,.05)'); g.addColorStop(.39, 'rgba(255,255,255,0)');
+      cx.fillStyle = g; cx.fillRect(318, 170, 388, 240); cx.restore();
+      // eyes
+      [[430, 278], [594, 278]].forEach(([x, y]) => {
+        g = cx.createRadialGradient(x, y, 20, x, y, 95); g.addColorStop(0, 'rgba(45,226,255,.4)'); g.addColorStop(1, 'rgba(45,226,255,0)'); cx.fillStyle = g; cx.fillRect(x - 100, y - 100, 200, 200);
+        part(c => circ(c, x, y, 52), '#a8fff8', '#0d8e99', 238, 226, x, y, 52);
+        cx.fillStyle = '#03121a'; circ(cx, x, y, 36); cx.fill();
+        g = cx.createRadialGradient(x, y + 6, 2, x, y, 28); g.addColorStop(0, '#bffcff'); g.addColorStop(.6, '#2de2ff'); g.addColorStop(1, '#0a5f70'); cx.fillStyle = g; circ(cx, x, y, 27); cx.fill();
+        cx.fillStyle = '#fff'; circ(cx, x - 12, y - 14, 11); cx.fill(); cx.fillStyle = 'rgba(255,255,255,.7)'; circ(cx, x + 14, y + 11, 5); cx.fill();
+      });
+      // smile + cheeks
+      [[404, 342], [620, 342]].forEach(([x, y]) => { cx.fillStyle = 'rgba(45,226,255,.22)'; cx.beginPath(); cx.ellipse(x, y, 24, 12, 0, 0, 7); cx.fill(); });
+      const smile = c => { c.beginPath(); c.moveTo(462, 338); c.quadraticCurveTo(512, 386, 562, 338); };
+      cx.save(); cx.lineCap = 'round'; cx.shadowColor = '#2de2ff'; cx.shadowBlur = 26; cx.strokeStyle = 'rgba(45,226,255,.9)'; cx.lineWidth = 14; smile(cx); cx.stroke();
+      cx.shadowBlur = 0; cx.strokeStyle = '#e2ffff'; cx.lineWidth = 6; smile(cx); cx.stroke(); cx.restore();
+      dx.lineCap = 'round'; dx.strokeStyle = 'rgb(228,228,228)'; dx.lineWidth = 10; smile(dx); dx.stroke();
+    }
+    drawRobot();
+
+    // ---------- Custom image / depth uploads ----------
+    let userImg = null, userDepth = null;
+    function cover(ctx, img) {
+      const s = Math.max(S / img.width, S / img.height), w = img.width * s, h = img.height * s;
+      ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+    }
+    function autoDepth() {
+      // Estimate depth from brightness, softened with a blur where supported
+      dx.filter = 'grayscale(1) blur(12px) contrast(1.25)';
+      dx.drawImage(colorC, 0, 0); dx.filter = 'none';
+    }
+    function applyUser() {
+      if (userImg) { cx.clearRect(0, 0, S, S); cover(cx, userImg); }
+      if (userDepth) { dx.clearRect(0, 0, S, S); cover(dx, userDepth); } else if (userImg) { autoDepth(); }
+      texC.needsUpdate = texD.needsUpdate = true;
+    }
+    function load(file, cb) {
+      const img = new Image(); img.onload = () => { cb(img); applyUser(); }; img.src = URL.createObjectURL(file);
+    }
+    document.getElementById('fi').onchange = e => e.target.files[0] && load(e.target.files[0], i => userImg = i);
+    document.getElementById('fd').onchange = e => e.target.files[0] && load(e.target.files[0], i => userDepth = i);
+    document.getElementById('reset').onclick = () => { userImg = userDepth = null; drawRobot(); texC.needsUpdate = texD.needsUpdate = true; };
+
+    // ---------- Three.js parallax shader ----------
+    const stage = document.getElementById('stage');
+    let texC, texD, renderer, material;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      stage.appendChild(renderer.domElement);
+      texC = new THREE.CanvasTexture(colorC); texD = new THREE.CanvasTexture(depthC);
+      [texC, texD].forEach(t => { t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; });
+      material = new THREE.ShaderMaterial({
+        uniforms: { uTex: { value: texC }, uDepth: { value: texD }, uMouse: { value: new THREE.Vector2() }, uCursor: { value: new THREE.Vector2(.5, .5) }, uGlow: { value: 0 }, uTime: { value: 0 } },
+        vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }`,
+        fragmentShader: `
+      precision highp float;
+      varying vec2 vUv;
+      uniform sampler2D uTex, uDepth; uniform vec2 uMouse, uCursor; uniform float uGlow, uTime;
+      void main(){
+        vec2 uv = (vUv-.5)/1.1+.5;                 // zoom so edges never show
+        float d = texture2D(uDepth, uv).r;
+        vec2 p = uv + uMouse*(d-.35)*.07;          // near layers move more than far ones
+        d = texture2D(uDepth, p).r;
+        p = uv + uMouse*(d-.35)*.07;               // second pass refines the parallax
+        d = texture2D(uDepth, p).r;
+        vec3 col = texture2D(uTex, p).rgb;
+        vec2 e = vec2(1./1024.,0.);
+        float gx = texture2D(uDepth,p+e).r - texture2D(uDepth,p-e).r;
+        float gy = texture2D(uDepth,p+e.yx).r - texture2D(uDepth,p-e.yx).r;
+        vec3 n = normalize(vec3(-gx*7.,-gy*7.,1.));
+        vec2 cp = uCursor; float dist = distance(p, cp);
+        vec3 L = normalize(vec3(cp-p, .3));
+        float spec = pow(max(dot(n,L),0.),20.);
+        float glow = exp(-dist*dist*55.) * (.25+d);
+        float rim = clamp(length(vec2(gx,gy))*6.,0.,1.) * exp(-dist*2.6);
+        vec3 cyan = vec3(.18,.89,1.);
+        col += cyan*(glow*.9 + spec*.35*d*exp(-dist*3.) + rim*.8) * uGlow;
+        col *= 1. - .35*smoothstep(.45,.95,distance(vUv,vec2(.5)));
+        gl_FragColor = vec4(col,1.);
+      }`
+      });
+      const scene = new THREE.Scene(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+      const size = () => { renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
+      addEventListener('resize', size); size();
+      // ---------- Pointer + easing ----------
+      const tgt = { mx: 0, my: 0, cx: .5, cy: .5, glow: 0 }, cur = { mx: 0, my: 0, cx: .5, cy: .5, glow: 0 };
+      let lastMove = -9;
+      function move(e) {
+        const r = stage.getBoundingClientRect();
+        const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+        const y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+        tgt.mx = x * 2 - 1; tgt.my = 1 - y * 2;
+        tgt.cx = x; tgt.cy = 1 - y;
+        tgt.glow = 1; lastMove = performance.now() / 1000;
+      }
+      stage.addEventListener('pointermove', move);
+      stage.addEventListener('pointerdown', e => {
+        stage.setPointerCapture(e.pointerId);
+        move(e);
+      });
+      stage.addEventListener('pointerleave', e => {
+        if (e.pointerType === 'mouse') tgt.glow = 0;
+      });
+
+      const wrapEl = stage;
+      (function loop(t) {
+        t /= 1000;
+        if (t - lastMove > 2.5) { // idle: gentle drifting motion
+          tgt.mx = Math.sin(t * .6) * .5; tgt.my = Math.cos(t * .45) * .35;
+          tgt.cx = .5 + tgt.mx * .25; tgt.cy = .55 + tgt.my * .25; tgt.glow = .5;
+        }
+        for (const k in cur) { cur[k] += (tgt[k] - cur[k]) * (k === 'cx' || k === 'cy' ? .16 : .07); }
+        const u = material.uniforms;
+        u.uMouse.value.set(cur.mx, cur.my); u.uCursor.value.set(cur.cx, cur.cy); u.uGlow.value = cur.glow; u.uTime.value = t;
+        wrapEl.style.transform = `rotateY(${cur.mx * 9}deg) rotateX(${-cur.my * 9}deg)`;
+        renderer.render(scene, cam);
+        requestAnimationFrame(loop);
+      })(0);
+    } catch (err) {
+      stage.innerHTML = '<p style="padding:24px">WebGL isn’t available in this browser, so the 3D effect can’t run.</p>';
+    }
+  </script>
+</body>
+
+</html>
