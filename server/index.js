@@ -132,8 +132,14 @@ function getBrowser(userAgent) {
 }
 
 function getDevice(userAgent) {
-  if (/tablet|ipad/i.test(userAgent)) return "Tablet";
-  if (/mobile|android|iphone/i.test(userAgent)) return "Mobile";
+  if (/ipad|tablet|playbook|silk/i.test(userAgent)) {
+    return "Tablet";
+  }
+
+  if (/mobile|android|iphone|ipod|windows phone|blackberry/i.test(userAgent)) {
+    return "Mobile";
+  }
+
   return "Desktop";
 }
 
