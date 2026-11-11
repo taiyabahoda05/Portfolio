@@ -176,7 +176,9 @@ app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
 app.post("/api/analytics/visit", visitLimiter, async (req, res) => {
   try {
-    const userAgent = cleanText(req.get("user-agent") || "", 500);
+    const rawUserAgent = req.get("user-agent") || "";
+    const userAgent = rawUserAgent.slice(0, 500);
+    console.log("RAW USER-AGENT:", JSON.stringify(rawUserAgent));
     const rawReferrer = cleanText(req.body?.referrer || "", 500);
     let referrer = "";
     try {
