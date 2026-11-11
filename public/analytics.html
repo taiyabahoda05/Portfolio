@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#f4f1ec">
+  <title>Portfolio Analytics — Taiyaba Hoda</title>
+  <link rel="stylesheet" href="/analytics.css">
+  <script defer src="/analytics-dashboard.js"></script>
+</head>
+<body>
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div><span class="eyebrow">PRIVATE ADMIN VIEW</span><h1>Portfolio analytics</h1><p>Recent visits and visitor environment details.</p></div>
+      <a href="/" class="back-link">Back to portfolio</a>
+    </header>
+    <section class="auth-panel" id="auth-panel">
+      <label for="admin-token">Analytics access token</label>
+      <div class="token-row"><input id="admin-token" type="password" autocomplete="current-password" placeholder="Enter your admin token"><button id="load-analytics" type="button">View analytics</button></div>
+      <p id="status" role="status">The token is used only for this browser session and is not saved.</p>
+    </section>
+    <section id="analytics-content" hidden>
+      <div class="summary-card"><span>Total recorded visits</span><strong id="total-visits">—</strong></div>
+      <div class="table-wrap"><table><thead><tr><th>Visited at</th><th>Visitor ID</th><th>Device</th><th>Browser</th><th>OS</th><th>Page</th><th>Referrer</th></tr></thead><tbody id="visits-body"></tbody></table></div>
+      <p class="footnote">Visitor IDs are one-way pseudonymous hashes. Names and exact locations are not collected. Showing the latest 100 visits.</p>
+    </section>
+  </main>
+</body>
+</html>
