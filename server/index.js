@@ -216,8 +216,8 @@ app.use((error, _req, res, _next) => {
 
 async function start() {
   await mongoClient.connect();
-  const database = mongoClient.db(process.env.MONGODB_DB || "portfolio_analytics");
-  visitsCollection = database.collection("visits");
+  const database = mongoClient.db(process.env.MONGODB_DB || "portfolio");
+  visitsCollection = database.collection("track");
   await visitsCollection.createIndex({ visitedAt: -1 });
   await visitsCollection.createIndex({ visitorId: 1, visitedAt: -1 });
   await visitsCollection.createIndex({ visitedAt: 1 }, { expireAfterSeconds: 15552000 });
