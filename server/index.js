@@ -16,6 +16,27 @@ const port = Number(process.env.PORT || 3001);
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
+const allowedOrigin = process.env.FRONTEND_ORIGIN;
+
+app.use((req, res, next) => {
+  const origin = req.get("Origin");
+
+  if (origin === allowedOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+
+  if (req.method === "OPTIONS") {
+    return origin === allowedOrigin
+      ? res.sendStatus(204)
+      : res.sendStatus(403);
+  }
+
+  next();
+});
+
 const requiredSecrets = ["MONGODB_URI", "ANALYTICS_ADMIN_TOKEN", "VISITOR_HASH_SECRET"];
 for (const key of requiredSecrets) {
   if (!process.env[key]) {
