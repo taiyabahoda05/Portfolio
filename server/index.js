@@ -204,7 +204,7 @@ app.use(express.static(distDir, {
   }
 }));
 
-app.get("*", (req, res, next) => {
+app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
   res.sendFile(path.join(distDir, "index.html"), error => error && next(error));
 });
@@ -220,6 +220,7 @@ async function start() {
   visitsCollection = database.collection("visits");
   await visitsCollection.createIndex({ visitedAt: -1 });
   await visitsCollection.createIndex({ visitorId: 1, visitedAt: -1 });
+  await visitsCollection.createIndex({ visitedAt: 1 }, { expireAfterSeconds: 15552000 });
   app.listen(port, "0.0.0.0", () => {
     console.log(`Portfolio server listening on port ${port}`);
   });
