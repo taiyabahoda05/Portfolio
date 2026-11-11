@@ -24,3 +24,15 @@
   .project-image-wrap:not(.project-image-wrap--concept) .project-image{width:100%;height:100%;object-fit:contain}
   .live-label--with-badge{right:94px}
 }
+
+/* Keep desktop project links stable while hovering/clicking.
+   The parent card's 3D transform can shift the hit area under the pointer. */
+.project-card:hover {
+  transform: none !important;
+}
+.project-actions a {
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+  cursor: pointer;
+}
