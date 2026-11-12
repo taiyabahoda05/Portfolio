@@ -1044,6 +1044,18 @@ body {
 .panel-bottom > div {
   min-width: 0;
 }
+
+/* Keep the email label above its address instead of on the same line. */
+.panel-bottom > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.panel-bottom > div:first-child > small {
+  display: block;
+}
 .panel-bottom small,
 .connect-card small {
   font-size: 9px;
@@ -1062,6 +1074,7 @@ body {
 }
 .panel-bottom > div:first-child > a {
   max-width: 100%;
+  margin-top: 0;
 }
 .panel-bottom > div:first-child > a span {
   min-width: 0;
