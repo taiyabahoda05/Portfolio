@@ -111,7 +111,7 @@ const mainCsp = {
     "https://fonts.gstatic.com"
   ],
   imgSrc: ["'self'", "data:", "https:"],
-  connectSrc: ["'self'"],
+  connectSrc: ["'self'", "https://taiyaba-portfolio-analytics.onrender.com"],
   frameSrc: ["'self'"],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],
