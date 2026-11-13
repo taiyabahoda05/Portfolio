@@ -4,26 +4,42 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#f4f1ec">
+  <meta name="theme-color" content="#293943">
   <title>Portfolio Analytics — Taiyaba Hoda</title>
   <link rel="stylesheet" href="/analytics.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script defer src="/analytics-dashboard.js"></script>
 </head>
 <body>
+  <div class="top-rule" aria-hidden="true"></div>
   <main class="dashboard">
     <header class="dashboard-header">
-      <div><span class="eyebrow">PRIVATE ADMIN VIEW</span><h1>Portfolio analytics</h1><p>Recent visits and visitor environment details.</p></div>
+      <div><span class="eyebrow">PRIVATE ADMIN VIEW</span><h1>Portfolio analytics<span>.</span></h1><p>Recent visits and visitor environment details.</p></div>
       <a href="/" class="back-link">Back to portfolio</a>
     </header>
     <section class="auth-panel" id="auth-panel">
-      <label for="admin-token">Analytics access token</label>
-      <div class="token-row"><input id="admin-token" type="password" autocomplete="current-password" placeholder="Enter your admin token"><button id="load-analytics" type="button">View analytics</button></div>
+      <label for="admin-token">ANALYTICS ACCESS TOKEN</label>
+      <div class="token-row"><input id="admin-token" type="password" autocomplete="off" placeholder="Enter your admin token"><button id="load-analytics" type="button">VIEW ANALYTICS</button></div>
       <p id="status" role="status">The token is used only for this browser session and is not saved.</p>
     </section>
     <section id="analytics-content" hidden>
-      <div class="summary-card"><span>Total recorded visits</span><strong id="total-visits">—</strong></div>
-      <div class="table-wrap"><table><thead><tr><th>Visited at</th><th>Visitor ID</th><th>Device</th><th>Browser</th><th>OS</th><th>Page</th><th>Referrer</th></tr></thead><tbody id="visits-body"></tbody></table></div>
-      <p class="footnote">Visitor IDs are one-way pseudonymous hashes. Names and exact locations are not collected. Showing the latest 100 visits.</p>
+      <div class="summary-grid" aria-label="Visit summary">
+        <article class="summary-card"><span>TOTAL VISITS</span><strong id="total-visits">—</strong></article>
+        <article class="summary-card"><span>UNIQUE VISITORS</span><strong id="unique-visitors">—</strong></article>
+        <article class="summary-card"><span>LAST 30 DAYS</span><strong id="last-30-visits">—</strong></article>
+      </div>
+      <div class="insights-grid">
+        <section class="insight-card"><span class="section-label">MOST VISITED PAGES</span><div class="breakdown-list" id="pages-breakdown"></div></section>
+        <section class="insight-card"><span class="section-label">DEVICES</span><div class="breakdown-list" id="devices-breakdown"></div></section>
+        <section class="insight-card"><span class="section-label">BROWSERS</span><div class="breakdown-list" id="browsers-breakdown"></div></section>
+      </div>
+      <section class="table-section">
+        <div class="table-heading"><span class="section-label">RECENT VISITS</span><span>Latest 100 records</span></div>
+        <div class="table-wrap"><table><thead><tr><th>Visited at</th><th>Visitor ID</th><th>Device</th><th>Browser</th><th>OS</th><th>Page</th><th>Referrer</th></tr></thead><tbody id="visits-body"></tbody></table></div>
+      </section>
+      <p class="footnote">Visitor IDs are one-way pseudonymous hashes. Names and exact locations are not collected.</p>
     </section>
   </main>
 </body>
