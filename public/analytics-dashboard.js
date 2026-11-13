@@ -2,6 +2,7 @@
 (() => {
   const tokenInput = document.getElementById("admin-token");
   const loadButton = document.getElementById("load-analytics");
+  const refreshButton = document.getElementById("refresh-analytics");
   const status = document.getElementById("status");
   const content = document.getElementById("analytics-content");
   const total = document.getElementById("total-visits");
@@ -77,6 +78,8 @@
     }
 
     loadButton.disabled = true;
+    if (refreshButton) refreshButton.disabled = true;
+    if (refreshButton) refreshButton.textContent = "Refreshing…";
     status.dataset.state = "loading";
     status.textContent = "Loading visit records…";
 
@@ -169,10 +172,15 @@
 
     } finally {
       loadButton.disabled = false;
+      if (refreshButton) {
+        refreshButton.disabled = false;
+        refreshButton.textContent = "↻ Refresh";
+      }
     }
   }
 
   loadButton.addEventListener("click", loadAnalytics);
+  if (refreshButton) refreshButton.addEventListener("click", loadAnalytics);
 
   tokenInput.addEventListener("keydown", event => {
     if (event.key === "Enter") {
