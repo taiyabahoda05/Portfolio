@@ -283,6 +283,22 @@ td {
   color: #555;
 }
 
+.referrer-link {
+  color: #293943;
+  font-weight: 600;
+  text-decoration-color: #d94b35;
+  text-underline-offset: 3px;
+}
+
+.referrer-link:hover {
+  color: #d94b35;
+}
+
+.direct-referrer {
+  color: #888;
+  font-style: italic;
+}
+
 .footnote {
   margin-top: 14px;
   font-size: 11px;
