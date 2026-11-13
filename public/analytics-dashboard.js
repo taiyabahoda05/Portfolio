@@ -112,16 +112,46 @@
           ? new Date(visit.visitedAt).toLocaleString()
           : "—";
 
-        [
-          date,
-          visit.visitorId,
-          visit.device,
-          visit.browser,
-          visit.operatingSystem,
-          visit.page,
-          visit.referrer
-        ].forEach(value => row.append(cell(value)));
+        row.append(
+          cell(date),
+          cell(visit.device),
+          cell(visit.browser),
+          cell(visit.operatingSystem),
+          cell(visit.page)
+        );
 
+        const referrerCell = document.createElement("td");
+        const rawReferrer = typeof visit.referrer === "string"
+          ? visit.referrer.trim()
+          : "";
+
+        if (!rawReferrer) {
+          referrerCell.textContent = "Direct";
+          referrerCell.className = "direct-referrer";
+        } else {
+          try {
+            const referrerUrl = new URL(rawReferrer);
+
+            if (["http:", "https:"].includes(referrerUrl.protocol)) {
+              const link = document.createElement("a");
+              link.href = referrerUrl.href;
+              link.textContent = referrerUrl.origin;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.className = "referrer-link";
+              link.title = referrerUrl.href;
+              referrerCell.append(link);
+            } else {
+              referrerCell.textContent = "Direct";
+              referrerCell.className = "direct-referrer";
+            }
+          } catch {
+            referrerCell.textContent = "Direct";
+            referrerCell.className = "direct-referrer";
+          }
+        }
+
+        row.append(referrerCell);
         body.append(row);
       }
 
